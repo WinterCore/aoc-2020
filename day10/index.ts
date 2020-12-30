@@ -1,4 +1,27 @@
-function part1(nums: number[]) {
+// I couldn't solve this on my own cuz I'm a pepega.
+// Ref: https://github.com/tsoding/aoc-2020/blob/master/10-c/main.c
+function countArrangements(nums: number[]): number {
+    nums.push(nums[nums.length - 1] + 3);
+    let dp = [1];
+    for (let i = 1; i < nums.length; i += 1) {
+        dp[i] = 0;
+        for (let j = i - 1; j >= 0 && nums[i] - nums[j] <= 3; j -= 1) {
+            dp[i] += dp[j];
+        }
+    }
+    return dp[nums.length - 1];
+}
+
+
+function part2(nums: number[]): string {
+    const adapters = [0, ...nums].sort((a, b) => a - b);
+
+    const result = countArrangements(adapters);
+
+    return `Part 2 answer = ${result}`;
+}
+
+function part1(nums: number[]): string {
     const adapters = [0, ...nums].sort((a, b) => a - b);
     let counts = {
         1: 0,
@@ -19,10 +42,10 @@ function part1(nums: number[]) {
 }
 
 async function main() {
-    const input = await Deno.readTextFile('input');
+    const input = await Deno.readTextFile('exampleinput2');
     const data = input.trim().split('\n').map(n => +n);
 
-    return [part1(data)].join('\n');
+    return [part1(data), part2(data)].join('\n');
 }
 
 main()
