@@ -5,9 +5,48 @@ enum Seat {
 };
 
 type Point = [number, number];
-type Stats = { occupied: number; empty: number; total: number; };
+type Stats = { occupied: number; };
 
-function advanceGeneration(data: Seat[][]) {
+function getNeighborsP1(y: number, x: number, set: Seat[][]): Stats {
+    let h = set.length, w = set[0].length;
+    let stats: Stats = { occupied: 0 };
+    for (let i = -1; i < 2; i += 1) {
+        for (let j = -1; j < 2; j += 1) {
+            let cy = y + i, cx = x + j;
+            if ((i !== 0 || j !== 0) && (cy >= 0 && cy < h && cx >= 0 && cx < w)) {
+                let cell = set[cy][cx];
+                if (cell === Seat.OCCUPIED)
+                    stats.occupied += 1;
+            }
+        }
+    }
+    return stats;
+}
+
+function getNeighborsP2(y: number, x: number, set: Seat[][]): Stats {
+    let h = set.length, w = set[0].length;
+    let stats: Stats = { occupied: 0 };
+    for (let i = -1; i < 2; i += 1) {
+        for (let j = -1; j < 2; j += 1) {
+            let cy = y + i, cx = x + j;
+            if (i === 0 && j === 0) continue;
+            while (cy >= 0 && cy < h && cx >= 0 && cx < w) {
+                if (set[cy][cx] === Seat.OCCUPIED) {
+                    stats.occupied += 1;
+                    break;
+                } else if (set[cy][cx] === Seat.EMPTY) {
+                    break;
+                } else {
+                    cy += i;
+                    cx += j;
+                }
+            }
+        }
+    }
+    return stats;
+}
+
+function advanceGeneration(data: Seat[][], tolerance: number, getNeighbors: (y: number, x: number, set: Seat[][]) => Stats) {
     const result: Seat[][] = [];
     for (let i = 0; i < data.length; i += 1) {
         result[i] = [];
@@ -17,32 +56,11 @@ function advanceGeneration(data: Seat[][]) {
                 result[i][j] = data[i][j];
                 continue;
             }
-            let positions: Point[] = [
-                [i - 1, j - 1], // top left
-                [i - 1, j], // top
-                [i - 1, j + 1], // top right
-                [i, j + 1], // right
-                [i + 1, j + 1], // bottom right
-                [i + 1, j], // bottom
-                [i + 1, j - 1], // bottom left
-                [i, j - 1], // left
-            ];
-            const stats: Stats = positions
-                .filter(([y, x]) => y >= 0 && x >= 0 && y < data.length && x < data[y].length)
-                .reduce((acc, [y, x]) => {
-                    const neighbor = data[y][x];
-                    if (neighbor === Seat.FLOOR) return acc;
-                    if (neighbor === Seat.OCCUPIED)
-                        acc.occupied += 1;
-                    else if (neighbor === Seat.EMPTY)
-                        acc.empty += 1;
-                    acc.total += 1;
-                    return acc;
-                }, { occupied: 0, empty: 0, total: 0 });
+            let stats: Stats = getNeighbors(i, j, data);
 
             if (seat === Seat.EMPTY && stats.occupied === 0)
                 result[i][j] = Seat.OCCUPIED;
-            else if (seat === Seat.OCCUPIED && stats.occupied >= 4)
+            else if (seat === Seat.OCCUPIED && stats.occupied >= tolerance)
                 result[i][j] = Seat.EMPTY;
             else
                 result[i][j] = data[i][j];
@@ -60,17 +78,27 @@ function areIdentical(set1: Seat[][], set2: Seat[][]): boolean {
     return true;
 }
 
-function part2(foo: any): string {
+function part2(data: Seat[][]): string {
+    let prev: Seat[][] = data;
+    let current: Seat[][] = advanceGeneration(data, 5, getNeighborsP2);
+    while (!areIdentical(prev, current)) {
+        prev = current;
+        current = advanceGeneration(prev, 5, getNeighborsP2);
+    }
 
-    return `Part 2 answer = ${0}`;
+    const occupied = current
+        .map((row) => row.filter((x) => x === Seat.OCCUPIED).length)
+        .reduce((a, b) => a + b, 0);
+
+    return `Part 2 answer = ${occupied}`;
 }
 
 function part1(data: Seat[][]): string {
     let prev: Seat[][] = data;
-    let current: Seat[][] = advanceGeneration(data);
+    let current: Seat[][] = advanceGeneration(data, 4, getNeighborsP1);
     while (!areIdentical(prev, current)) {
         prev = current;
-        current = advanceGeneration(prev);
+        current = advanceGeneration(prev, 4, getNeighborsP1);
     }
 
     const occupied = current
@@ -84,7 +112,7 @@ async function main() {
     const input = await Deno.readTextFile('input');
     const data = input.trim().split('\n').map(x => x.split('')) as Seat[][];
 
-    return [part1(data), part2(data)].join('\n');
+    return [part2(data)].join('\n');
 }
 
 main()
