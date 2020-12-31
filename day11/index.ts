@@ -112,7 +112,7 @@ async function main() {
     const input = await Deno.readTextFile('input');
     const data = input.trim().split('\n').map(x => x.split('')) as Seat[][];
 
-    return [part2(data)].join('\n');
+    return [part1(data), part2(data)].join('\n');
 }
 
 main()
