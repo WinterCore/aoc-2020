@@ -60,7 +60,7 @@ function arrayIndexWrap(length: number, n: number) {
     if (n >= 0)
         return n % length;
     else
-        return ((n % 4) + 4) % 4;
+        return ((n % length) + length) % length;
 }
 
 function rotatePosition(position: Position, dir: 'L' | 'R', val: number): Position {
