@@ -3,9 +3,40 @@ type InstructionGroup = {
     assignments : [number, number][];
 };
 
-function part2(): string {
+function part2(data: string[]): string {
+    const groups = parse(data);
 
-    return `Part 2 answer = ${0}`;
+    const mem = new Map<number, number>();
+
+    for (let group of groups) {
+        let mask = group.mask.split('');
+
+        for (let [addr, val] of group.assignments) {
+            let modifiedAddr = addr.toString(2).padStart(36, '0').split('').map((x, i) => {
+                if (mask[i] === '1')
+                    return '1';
+                if (mask[i] === 'X')
+                    return 'X';
+                return x;
+            });
+            const floatingBitsIndices = modifiedAddr.map((x, i) => x === 'X' ? i : -1).filter(x => x >= 0);
+            const nums = Array.from({ length: 1 << floatingBitsIndices.length }).map((_, i) => i);
+            for (let num of nums) {
+                let numBits = num.toString(2).padStart(nums[nums.length - 1].toString(2).length, '0').split('');
+                let i = 0;
+                let newAddr = modifiedAddr;
+                for (let j of floatingBitsIndices) {
+                    newAddr[j] = numBits[i];
+                    i += 1;
+                }
+                mem.set(parseInt(newAddr.join(''), 2), val);
+            }
+        }
+    }
+
+    const sum = Array.from(mem.values()).reduce((a, b) => a + b, 0);
+
+    return `Part 2 answer = ${sum}`;
 }
 
 function part1(data: string[]): string {
@@ -57,7 +88,7 @@ async function main() {
     const input = await Deno.readTextFile('input');
     const data = input.trim().split('\n');
 
-    return [part1(data), part2()].join('\n');
+    return [part1(data), part2(data)].join('\n');
 }
 
 main()
