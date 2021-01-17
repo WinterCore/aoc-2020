@@ -1,6 +1,52 @@
+// The solution was inspired by Tsoding https://www.youtube.com/watch?v=95ooXiwVeMM
+
 type InstructionGroup = {
     mask        : string;
     assignments : [number, number][];
+};
+
+const xMask = (maskStr: string): bigint => (
+    maskStr
+        .split('')
+        .reduce((mask, x) => x === 'X' ? (mask << 1n) | 1n : mask << 1n, 0n)
+);
+
+const onMask = (maskStr: string): bigint => (
+    maskStr
+        .split('')
+        .reduce((mask, x) => x === '1' ? (mask << 1n) | 1n : mask << 1n, 0n)
+);
+
+
+const spreadMask = (mask: bigint, n: bigint): bigint => {
+    let reversedResult = 0n;
+    for (let i = 0; i < 36; i += 1) {
+        reversedResult <<= 1n;
+        if ((mask & 1n) === 1n) {
+            reversedResult  |= (n & 1n);
+            n              >>= 1n;
+        }
+        mask >>= 1n;
+    }
+
+    let result = 0n;
+
+    for (let i = 0; i < 36; i += 1) {
+        result         <<= 1n;
+        result          |= (reversedResult & 1n);
+        reversedResult >>= 1n;
+    }
+
+    return result;
+};
+
+const countOnBits = (n: bigint): number => {
+    let result = 0;
+    while (n > 0) {
+        result += Number(n & 1n);
+        n >>= 1n;
+    }
+    return result;
 };
 
 function part2(data: string[]): string {
@@ -9,27 +55,14 @@ function part2(data: string[]): string {
     const mem = new Map<number, number>();
 
     for (let group of groups) {
-        let mask = group.mask.split('');
+        let xm = xMask(group.mask);
+        let onm = onMask(group.mask);
 
         for (let [addr, val] of group.assignments) {
-            let modifiedAddr = addr.toString(2).padStart(36, '0').split('').map((x, i) => {
-                if (mask[i] === '1')
-                    return '1';
-                if (mask[i] === 'X')
-                    return 'X';
-                return x;
-            });
-            const floatingBitsIndices = modifiedAddr.map((x, i) => x === 'X' ? i : -1).filter(x => x >= 0);
-            const nums = Array.from({ length: 1 << floatingBitsIndices.length }).map((_, i) => i);
-            for (let num of nums) {
-                let numBits = num.toString(2).padStart(nums[nums.length - 1].toString(2).length, '0').split('');
-                let i = 0;
-                let newAddr = modifiedAddr;
-                for (let j of floatingBitsIndices) {
-                    newAddr[j] = numBits[i];
-                    i += 1;
-                }
-                mem.set(parseInt(newAddr.join(''), 2), val);
+            const max = 1 << countOnBits(xm);
+            for (let i = 0; i < max; i += 1) {
+                let modifiedAddr = Number((BigInt(addr) | onm) & (~xm) | spreadMask(xm, BigInt(i)));
+                mem.set(modifiedAddr, val);
             }
         }
     }
@@ -45,19 +78,10 @@ function part1(data: string[]): string {
     const mem: { [key: number]: number; } = {};
 
     for (let group of groups) {
-        let bits = group.mask
-            .split('')
-            .map((x, i) => x === 'X' ? [-1, -1] : [+x, group.mask.length - i - 1])
-            .filter(x => x[0] !== -1);
-
+        const xm = xMask(group.mask);
+        const onm = onMask(group.mask);
         for (let [addr, val] of group.assignments) {
-            let n = val.toString(2).split('');
-            n = Array.from({ length: 36 - n.length }).map(_ => '0').concat(n)
-            for (let [bit, i] of bits) {
-                n[36 - i - 1] = bit.toString();
-            }
-
-            mem[addr] = parseInt(n.join(''), 2);
+            mem[addr] = Number((BigInt(val) & xm) | onm);
         }
     }
 
