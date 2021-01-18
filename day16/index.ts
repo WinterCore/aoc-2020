@@ -5,9 +5,59 @@ type Data = {
     nearbyTickets : number[][];
 };
 
-function part2(lines: string[]): string {
+function validate(num: number, validator: Validator[]) {
+    return validator.some(({ min, max }) => num >= min && num <= max);
+}
 
-    return `Part 2 answer = ${0}`;
+function part2(lines: string[]): string {
+    const data = parse(lines);
+
+    const validators = Array.from(data.validators.values());
+
+    const filteredTickets = data.nearbyTickets.filter((ticket) => (
+        !ticket.some(num => validators.every(vv => !validate(num, vv)))
+    ));
+
+    const entries = Array.from(data.validators.entries());
+    let columnMappings: { [key: number]: string[] } = {};
+    for (let i = 0; i < entries.length; i += 1) {
+        const [validatorName, validator] = entries[i];
+        for (let j = 0; j < entries.length; j += 1) {
+            // if (columnMappings.has(j)) // If the appropriate field has been found for this position, then skip
+            //    continue;
+            if (filteredTickets.every(ticket => validate(ticket[j], validator))) {
+                // console.log(validatorName, j);
+                columnMappings[j] = columnMappings[j] ? columnMappings[j].concat([validatorName]) : [validatorName];
+            }
+        }
+    }
+
+    const finalMappings: Map<number, string> = new Map();
+
+    // Assign columns
+    // This shit is a disaster
+    while (Object.keys(columnMappings).length) {
+        for (let [key, value] of Object.entries(columnMappings)) {
+            for (let column of value) {
+                let count = 0;
+                for (let [curKey, curValue] of Object.entries(columnMappings)) {
+                    if (key === curKey) continue;
+                    if (curValue.indexOf(column) > -1)
+                        count += 1;
+                }
+                if (count === 0) {
+                    finalMappings.set(+key, column);
+                    delete columnMappings[+key];
+                }
+            }
+        }
+    }
+
+    const result = Array
+        .from(finalMappings.entries())
+        .reduce((res, [i, name]) => name.startsWith('departure') ? data.myTicket[i] * res : res, 1);
+
+    return `Part 2 answer = ${result}`;
 }
 
 function part1(lines: string[]): string {
@@ -18,7 +68,7 @@ function part1(lines: string[]): string {
     for (let ticket of data.nearbyTickets) {
         const validators = Array.from(data.validators.values());
         invalidSum += ticket.reduce((sum, num) => (
-            validators.every((vv) => vv.every(({ min, max }) => num < min || num > max))
+            validators.every(vv => !validate(num, vv))
                 ? sum + num
                 : sum
         ), 0);
