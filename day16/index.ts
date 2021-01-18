@@ -19,36 +19,32 @@ function part2(lines: string[]): string {
     ));
 
     const entries = Array.from(data.validators.entries());
-    let columnMappings: { [key: number]: string[] } = {};
+    let columnMappings: Map<number, Set<string>> = new Map();
     for (let i = 0; i < entries.length; i += 1) {
-        const [validatorName, validator] = entries[i];
+        const [name, validator] = entries[i];
         for (let j = 0; j < entries.length; j += 1) {
-            // if (columnMappings.has(j)) // If the appropriate field has been found for this position, then skip
-            //    continue;
             if (filteredTickets.every(ticket => validate(ticket[j], validator))) {
-                // console.log(validatorName, j);
-                columnMappings[j] = columnMappings[j] ? columnMappings[j].concat([validatorName]) : [validatorName];
+                const set = columnMappings.get(j);
+                if (set)
+                    set.add(name);
+                else
+                    columnMappings.set(j, new Set([name]));
             }
         }
     }
 
+
     const finalMappings: Map<number, string> = new Map();
 
-    // Assign columns
-    // This shit is a disaster
-    while (Object.keys(columnMappings).length) {
-        for (let [key, value] of Object.entries(columnMappings)) {
-            for (let column of value) {
-                let count = 0;
-                for (let [curKey, curValue] of Object.entries(columnMappings)) {
-                    if (key === curKey) continue;
-                    if (curValue.indexOf(column) > -1)
-                        count += 1;
-                }
-                if (count === 0) {
-                    finalMappings.set(+key, column);
-                    delete columnMappings[+key];
-                }
+    while (columnMappings.size) {
+        for (let [i, columnsSet] of columnMappings) {
+            if (columnsSet.size === 1) {
+                const column = Array.from(columnsSet.values())[0];
+                columnMappings.delete(i);
+                finalMappings.set(i, column);
+                for (let [, columnsMap] of columnMappings)
+                    columnsMap.delete(column);
+                break;
             }
         }
     }
