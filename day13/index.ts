@@ -1,5 +1,5 @@
 
-// Thanks Ryan Palo ref: https://dev.to/rpalo/comment/196bh
+// Thanks to Ryan Palo ref: https://dev.to/rpalo/comment/196bh
 function part2(time: number, rawBusses: number[]): string {
     const busses = rawBusses
         .map((bus, i) => [bus, i])
