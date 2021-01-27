@@ -1,121 +1,83 @@
-/*
- * This solution is complete garbage, this can only support 2 levels of operator precedence.
- *
- */
-
-type Operator = '+' | '*';
-type Token = number | Operator | '(' | ')';
+type Operator   = '+' | '*';
+type Token      = number | Operator | '(' | ')';
 type Expression = Token[];
 
-class Stack<T> {
-    size = 0
-    private stack: T[];
+type OperatorTable = {
+    [key in Operator] ?: (a: number, b: number) => number;
+}[];
 
-    constructor(arr: T[] = []) {
-        this.stack = arr;
+type EvaluatorState = {
+    expression: Expression;
+    i: number;
+};
+
+abstract class Evaluator {
+    private expression: Expression;
+    private i: number = 0;
+
+    constructor(expression: Expression) {
+        this.expression = expression;
     }
 
-    push(val: T): void {
-        this.stack.push(val);
+    get peek(): Token {
+        return this.expression[this.i];
     }
 
-    pop(): T {
-        if (this.empty()) throw new Error('The stack is empty!');
-        return this.stack.pop() as T;
+    eval(): number {
+        return this.level1();
     }
 
-    top(): T {
-        if (this.empty()) throw new Error('The stack is empty!');
-        return this.stack[this.stack.length - 1];
+    advance(): Token {
+        return this.expression[this.i++];
     }
 
-    empty(): boolean {
-        return !!this.size;
-    }
-}
-
-
-function calculate(a: number, b: number, op: Operator): number {
-    switch (op) {
-    case '+':
-        return a + b;
-    case '*':
-        return a * b;
-    }
-}
-
-function performOperation(ops: Stack<Operator>, nums: Stack<number>, parens: Stack<{ c: number }>, allowed: Operator[]): void {
-    if (parens.top().c >= 2 && allowed.indexOf(ops.top()) > -1) {
-        const b = nums.pop(), a = nums.pop();
-        nums.push(calculate(a, b, ops.pop()));
-        parens.top().c -= 1;
-        performOperation(ops, nums, parens, allowed);
-    }
-}
-
-function evaluateExpression2(expression: Expression): number {
-    let ops    = new Stack<Operator>();
-    let nums   = new Stack<number>();
-    let parens = new Stack<{ c: number }>([{ c: 0 }]);
-
-    for (let token of expression) {
-        if (typeof token === 'number') {
-            nums.push(token);
-            parens.top().c += 1;
-            performOperation(ops, nums, parens, ['+']);
-        } else {
-            switch (token) {
-            case '(':
-                parens.push({ c: 0 });
-                break;
-            case ')':
-                performOperation(ops, nums, parens, ['*']);
-                parens.pop();
-                parens.top().c += 1;
-                performOperation(ops, nums, parens, ['+']);
-                break;
-            case '+':
-            case '*':
-                ops.push(token);
-                break;
-            }
+    factor(): number {
+        if (typeof this.peek === 'number') {
+            return this.advance() as number;
+        } else if (this.peek === '(') {
+            this.advance(); // (
+            let result = this.level1();
+            this.advance(); // )
+            return result;
         }
-    }
-    performOperation(ops, nums, parens, ['*']);
 
-    return nums.pop();
+        throw new Error(`Unexpected token ${this.peek}`);
+    }
+
+    abstract level1(): number;
 }
 
-
-function evaluateExpression(expression: Expression): number {
-    let ops    = new Stack<Operator>();
-    let nums   = new Stack<number>();
-    let parens = new Stack<{ c: number }>([{ c: 0 }]);
-
-    for (let token of expression) {
-        if (typeof token === 'number') {
-            nums.push(token);
-            parens.top().c += 1;
-            performOperation(ops, nums, parens, ['+', '*']);
-        } else {
-            switch (token) {
-            case '(':
-                parens.push({ c: 0 });
-                break;
-            case ')':
-                parens.pop();
-                parens.top().c += 1;
-                performOperation(ops, nums, parens, ['+', '*']);
-                break;
-            case '+':
-            case '*':
-                ops.push(token);
-                break;
-            }
+class Evaluator1 extends Evaluator {
+    level1(): number {
+        let result = this.factor();
+        while (this.peek === '+' || this.peek === '*') {
+            if (this.advance() === '+')
+                result += this.factor();
+            else
+                result *= this.factor();
         }
+        return result;
+    }
+}
+
+class Evaluator2 extends Evaluator {
+    level2(): number { // Highest precedence (Level 2)
+        let result = this.factor();
+        while (this.peek === '+') {
+            this.advance();
+            result += this.factor();
+        }
+        return result;
     }
 
-    return nums.pop();
+    level1(): number { // Second highest precedence (Level 1)
+        let result = this.level2();
+        while (this.peek === '*') {
+            this.advance();
+            result *= this.level2();
+        }
+        return result;
+    }
 }
 
 function part1(lines: string[]): string {
@@ -123,7 +85,7 @@ function part1(lines: string[]): string {
     let results: number[] = [];
 
     for (let expression of expressions) {
-        results.push(evaluateExpression(expression));
+        results.push((new Evaluator1(expression)).eval());
     }
 
     return `Part 1 answer = ${results.reduce((a, b) => a + b, 0)}`;
@@ -134,7 +96,7 @@ function part2(lines: string[]): string {
     let results: number[] = [];
 
     for (let expression of expressions) {
-        results.push(evaluateExpression2(expression));
+        results.push((new Evaluator2(expression)).eval());
     }
 
     return `Part 2 answer = ${results.reduce((a, b) => a + b, 0)}`;
